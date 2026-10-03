@@ -1,0 +1,225 @@
+const API_BASE = '/api';
+
+function getToken() {
+  return localStorage.getItem('vaultpay_token');
+}
+
+function setSession(auth) {
+  localStorage.setItem('vaultpay_token', auth.token);
+  localStorage.setItem('vaultpay_user', JSON.stringify(auth.user));
+  localStorage.setItem('vaultpay_role', auth.user.role);
+}
+
+function clearSession() {
+  localStorage.removeItem('vaultpay_token');
+  localStorage.removeItem('vaultpay_user');
+  localStorage.removeItem('vaultpay_role');
+}
+
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${getToken()}`
+  };
+}
+
+async function apiRequest(url, method = 'GET', body = null) {
+  const options = {
+    method,
+    headers: authHeaders()
+  };
+
+  if (body !== null) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let payload = null;
+
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch (error) {
+    payload = { message: text };
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Request failed.');
+  }
+
+  return payload;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorBox = document.getElementById('errorBox');
+
+      try {
+        const result = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await result.json();
+        if (!result.ok) {
+          throw new Error(data.message || 'Login failed.');
+        }
+
+        setSession(data);
+        if (data.user.role === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/client/dashboard';
+        }
+      } catch (error) {
+        errorBox.textContent = error.message;
+      }
+    });
+  }
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      clearSession();
+      window.location.href = '/';
+    });
+  }
+});
+
+const VaultPayAdmin = {
+  async init() {
+    const statsGrid = document.getElementById('statsGrid');
+    const adminInvoices = document.getElementById('adminInvoices');
+    const clientSelect = document.getElementById('clientSelect');
+    const invoiceForm = document.getElementById('invoiceForm');
+
+    try {
+      const overview = await apiRequest(`${API_BASE}/admin/overview`);
+      const clients = await apiRequest(`${API_BASE}/admin/clients`);
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <span>Total Revenue</span>
+          <strong>$${overview.totalRevenue.toLocaleString()}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Clients</span>
+          <strong>${overview.clientCount}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Invoices</span>
+          <strong>${overview.invoiceCount}</strong>
+        </div>
+      `;
+
+      clientSelect.innerHTML = clients
+        .map((client) => `<option value="${client.id}">${client.name} (${client.email})</option>`)
+        .join('');
+
+      adminInvoices.innerHTML = overview.invoices
+        .map((invoice) => `
+          <article class="invoice-card ${invoice.status.toLowerCase()}">
+            <div>
+              <div class="invoice-number">${invoice.number}</div>
+              <div>${invoice.clientName}</div>
+            </div>
+            <div>
+              <div>${invoice.description}</div>
+              <div>$${invoice.amount.toLocaleString()} • ${invoice.status}</div>
+            </div>
+          </article>
+        `)
+        .join('');
+    } catch (error) {
+      alert(error.message);
+      window.location.href = '/';
+    }
+
+    invoiceForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const clientId = document.getElementById('clientSelect').value;
+      const amount = document.getElementById('amount').value;
+      const description = document.getElementById('description').value;
+      const dueDate = document.getElementById('dueDate').value;
+
+      try {
+        await apiRequest(`${API_BASE}/admin/invoices`, 'POST', { clientId, amount, description, dueDate });
+        window.location.reload();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  }
+};
+
+const VaultPayClient = {
+  async init() {
+    const summary = document.getElementById('clientSummary');
+    const clientInvoices = document.getElementById('clientInvoices');
+
+    try {
+      const invoices = await apiRequest(`${API_BASE}/invoices`);
+      const total = invoices.reduce((sum, invoice) => sum + (invoice.status === 'Paid' ? invoice.amount : 0), 0);
+      const due = invoices.filter((invoice) => invoice.status !== 'Paid').reduce((sum, invoice) => sum + invoice.amount, 0);
+
+      summary.innerHTML = `
+        <div class="stat-card">
+          <span>Paid</span>
+          <strong>$${total.toLocaleString()}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Outstanding</span>
+          <strong>$${due.toLocaleString()}</strong>
+        </div>
+      `;
+
+      clientInvoices.innerHTML = invoices
+        .map((invoice) => `
+          <article class="invoice-card ${invoice.status.toLowerCase()}">
+            <div>
+              <div class="invoice-number">${invoice.number}</div>
+              <div>${invoice.description}</div>
+            </div>
+            <div>
+              <div>$${invoice.amount.toLocaleString()} • ${invoice.status}</div>
+              <div class="action-row">
+                <a href="/api/invoices/${invoice.id}/pdf" target="_blank">Download PDF</a>
+                ${invoice.status !== 'Paid' ? `<button class="pay-btn" data-invoice-id="${invoice.id}">Pay Invoice</button>` : '<span class="paid-pill">Paid</span>'}
+              </div>
+            </div>
+          </article>
+        `)
+        .join('');
+
+      document.querySelectorAll('.pay-btn').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const invoiceId = button.dataset.invoiceId;
+          button.disabled = true;
+          button.textContent = 'Processing...';
+
+          try {
+            const result = await apiRequest(`${API_BASE}/invoices/${invoiceId}/pay`, 'POST');
+            if (result.sessionUrl) {
+              window.open(result.sessionUrl, '_blank');
+            }
+          } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+            button.textContent = 'Pay Invoice';
+          }
+        });
+      });
+    } catch (error) {
+      alert(error.message);
+      window.location.href = '/';
+    }
+  }
+};
+
+window.VaultPayAdmin = VaultPayAdmin;
+window.VaultPayClient = VaultPayClient;

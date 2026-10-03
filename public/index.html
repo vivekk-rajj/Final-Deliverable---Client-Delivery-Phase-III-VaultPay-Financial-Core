@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VaultPay Login</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="auth-shell">
+      <section class="auth-card">
+        <div class="brand-row">
+          <div class="logo-mark">V</div>
+          <div>
+            <div class="eyebrow">VaultPay</div>
+            <h1>Financial Core</h1>
+          </div>
+        </div>
+
+        <h2>Secure Portal Sign In</h2>
+        <form id="loginForm">
+          <label>
+            Email
+            <input type="email" id="email" value="admin@nexusservices.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" id="password" value="Admin@123" required />
+          </label>
+          <button type="submit">Login</button>
+        </form>
+
+        <div class="demo-block">
+          <p>Demo accounts</p>
+          <ul>
+            <li>Admin: admin@nexusservices.com / Admin@123</li>
+            <li>Client: evelyn@acmepartners.com / Client@123</li>
+          </ul>
+        </div>
+
+        <p id="errorBox" class="error"></p>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "vaultpay-financial-core",
+  "version": "1.0.0",
+  "description": "Security-first VaultPay financial core prototype with RBAC, Stripe checkout, and invoice PDF delivery.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.14",
+    "pdfkit": "^0.15.0",
+    "stripe": "^16.8.0"
+  }
+}

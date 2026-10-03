@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VaultPay Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-header">
+      <div>
+        <div class="eyebrow">Admin Panel</div>
+        <h1>Revenue Dashboard</h1>
+      </div>
+      <button id="logoutBtn" class="ghost">Logout</button>
+    </div>
+
+    <main class="dashboard-shell">
+      <section class="stats-grid" id="statsGrid"></section>
+
+      <section class="panel">
+        <h2>Create Invoice</h2>
+        <form id="invoiceForm">
+          <div class="grid-2">
+            <label>
+              Client
+              <select id="clientSelect"></select>
+            </label>
+            <label>
+              Amount
+              <input type="number" id="amount" min="100" step="100" required />
+            </label>
+          </div>
+          <label>
+            Description
+            <input type="text" id="description" required />
+          </label>
+          <label>
+            Due Date
+            <input type="date" id="dueDate" required />
+          </label>
+          <button type="submit">Create Invoice</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>All Invoices</h2>
+        <div id="adminInvoices" class="invoice-list"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const role = localStorage.getItem('vaultpay_role');
+        if (role !== 'admin') {
+          window.location.href = '/forbidden';
+          return;
+        }
+        window.VaultPayAdmin.init();
+      });
+    </script>
+  </body>
+</html>
